@@ -1,0 +1,404 @@
+## THESE QUERIES EXTRACT FROM AN ENDPOINT 
+## ALL THE DEFINITIONS OF DATASETS DEFINED FOR THE EXPERIMENT 
+## Results should be input in a repository
+############################ 
+#get all data structure definitions
+CONSTRUCT{
+?dsd a qb:DataStructureDefinition; }
+WHERE{
+SELECT ?dsd
+WHERE{
+  ?dsd a qb:DataStructureDefinition; 
+}
+}
+#############################
+#get all datasets
+CONSTRUCT{
+?dataset a qb:DataSet; }
+WHERE{
+SELECT ?dataset
+WHERE{
+  ?dataset a qb:DataSet; 
+}
+}
+#############################
+#get all qb:structure between dataset and DSD
+Construct{
+?s a qb:DataSet.
+?s qb:structure ?d.
+?d a qb:DataStructureDefinition.
+}
+WHERE{
+SELECT distinct ?s ?d
+WHERE{
+OPTIONAL{?s a qb:DataSet.}
+?s qb:structure ?d.
+OPTIONAL{?d a qb:DataStructureDefinition.}
+}
+}
+#############################
+#get all componentscepecifications
+CONSTRUCT{
+?cmpSpec a qb:ComponentSpecification;}
+WHERE{
+SELECT ?cmpSpec
+WHERE{
+?cmpSpec a qb:ComponentSpecification;
+}}
+#############################
+#get all DimensionProperties
+CONSTRUCT{
+?dimProp a qb:DimensionProperty.
+?dimProp rdfs:subPropertyOf ?subprop.
+?dimProp rdfs:range ?range.
+}
+WHERE{
+SELECT ?dimProp ?subprop ?range
+WHERE{
+?dimProp a qb:DimensionProperty;
+OPTIONAL{?dimProp rdfs:subPropertyOf ?subprop.}
+OPTIONAL{?dimProp rdfs:range ?range.}
+}
+}
+#############################
+#get all AttributeProperties
+CONSTRUCT{
+?AttProp a qb:AttributeProperty;}
+WHERE{
+SELECT ?AttProp
+WHERE{
+?AttProp a qb:AttributeProperty;
+}
+}
+#############################
+#get all measureProperties
+CONSTRUCT{
+?MeasProp a qb:MeasureProperty.
+?MeasProp rdfs:subPropertyOf ?subprop.
+?MeasProp rdfs:range ?range.}
+WHERE{
+SELECT ?MeasProp ?subprop ?range
+WHERE{
+?MeasProp a qb:MeasureProperty.
+OPTIONAL{?MeasProp rdfs:subPropertyOf ?subprop.}
+OPTIONAL{?MeasProp rdfs:range ?range.}
+}
+}
+#############################
+#get all codedProperties, with the respective codelist information
+CONSTRUCT{
+?cdproperty a qb:CodedProperty.
+?cdproperty qb:codeList ?cdlist.
+?cdlist rdf:type ?type.}
+WHERE{
+SELECT ?cdproperty ?cdlist ?type
+WHERE{
+?cdproperty a qb:CodedProperty;
+OPTIONAL{
+?cdproperty qb:codeList ?cdlist.
+?cdlist rdf:type ?type.}
+} 
+}
+#############################
+#get all all HierarchicalCodeLists
+CONSTRUCT{
+?HierCodeList a qb:HierrachicalCodeList;}
+WHERE{
+SELECT ?HierCodeList
+WHERE{
+?HierCodeList a qb:HierrachicalCodeList;
+} 
+}
+#############################
+#Get when measureType is used
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:dimension qb:measureType }
+WHERE{
+SELECT ?S ?D
+WHERE{
+{?S qb:component ?D.
+?D qb:componentProperty qb:measureType}
+UNION
+{
+?S qb:component ?D.
+?D qb:dimension qb:measureType
+}
+}
+}
+#############################
+#Get when a Dimension is used as measureDimension is used
+CONSTRUCT {
+?S qb:component ?C.
+?C qb:measureDimension ?D }
+WHERE{
+SELECT ?S ?C ?D
+WHERE{
+?S qb:component ?C.
+?C qb:measureDimension ?D}
+}
+
+#############################
+#Get the dimensions of a DSD through its components
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:dimension ?F.
+?F rdf:type qb:DimensionProperty }
+WHERE{
+SELECT ?S ?D ?F
+WHERE{
+{?S qb:component ?D.
+?D qb:dimension ?F.}
+UNION
+{
+?S qb:component ?D.
+?D qb:componentProperty ?F.
+?F rdf:type qb:DimensionProperty
+}
+}
+}
+#############################
+#Get the attributes of a DSD through its components
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:attribute ?F.
+?F rdf:type qb:AttributeProperty }
+WHERE{
+SELECT ?S ?D ?F
+WHERE{
+{?S qb:component ?D.
+?D qb:componentProperty ?F.
+?F rdf:type qb:AttributeProperty}
+UNION
+{
+?S qb:component ?D.
+?D qb:attribute ?F.}
+}
+}
+#############################
+#Get the measures of a DSD through its components
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:measure ?F.
+?F rdf:type qb:MeasureProperty }
+WHERE{
+SELECT ?S ?D ?F
+WHERE{
+{?S qb:component ?D.
+?D qb:componentProperty ?F.
+?F rdf:type qb:MeasureProperty}
+UNION
+{
+?S qb:component ?D.
+?D qb:measure ?F.}
+#Karin: removed line below. Is it needed?
+#?F rdf:type qb:MeasureProperty }
+}
+}
+#############################
+#Get the dimensions that have codeLists
+CONSTRUCT {
+#?S qb:component ?D.
+#?D qb:dimension ?F.
+?F rdf:type qb:DimensionProperty.
+?F qb:codeList ?cl.
+?cl rdf:type ?type.
+ }
+WHERE{
+#SELECT ?S ?D ?F ?cl ?type
+SELECT ?F ?cl ?type
+WHERE{
+{
+#?S qb:component ?D.
+#?D qb:dimension ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?F qb:codeList ?cl.
+?cl rdf:type ?type}
+}
+UNION
+{
+#?S qb:component ?D.
+#?D qb:componentProperty ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?F qb:codeList ?cl.
+?cl rdf:type ?type}
+}
+}
+} 
+#############################
+#Get the information about components of type measure, levels attachment in particular
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:dimension qb:measureType.
+?D qb:componentRequired ?req.
+?D qb:componentAttachment ?atch.
+?atch rdf:type ?type
+?D qb:order ?ord.
+ }
+WHERE{
+SELECT ?S ?D ?req ?atch ?ord ?type
+WHERE{
+{?S qb:component ?D.
+?D qb:componentProperty qb:measureType.
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.}
+OPTIONAL{?D qb:order ?ord.}
+}
+UNION
+{
+?S qb:component ?D.
+?D qb:dimension qb:measureType.
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.}
+OPTIONAL{?D qb:order ?ord.}
+}
+}
+}
+#############################
+#Get the information about components of type dimension, levels attachment in particular
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:dimension ?F.
+?D qb:componentRequired ?req.
+?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.
+?D qb:order ?ord.
+?F rdf:type qb:DimensionProperty. }
+WHERE{
+SELECT ?S ?D ?F ?req ?atch ?ord ?type
+WHERE{
+{?S qb:component ?D.
+?D qb:dimension ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.}
+OPTIONAL{?D qb:order ?ord.}
+}
+UNION
+{
+?S qb:component ?D.
+?D qb:componentProperty ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.}
+OPTIONAL{?D qb:order ?ord.}
+}
+}
+}
+#############################
+#Get the information about components of type measure, levels attachment in particular
+CONSTRUCT {
+?S qb:component ?D.
+?D qb:measure ?F.
+?D qb:componentRequired ?req.
+?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.
+?D qb:order ?ord.
+?F rdf:type qb:MeasureProperty.
+}
+WHERE{
+SELECT ?S ?D ?F ?req ?atch ?ord ?type
+WHERE{
+{?S qb:component ?D.
+?D qb:measure ?F.
+?F rdf:type qb:MeasureProperty.
+#OPTIONAL{?F rdfs:subPropertyOf ?subprop}
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.
+}
+OPTIONAL{?D qb:order ?ord.}
+}
+UNION
+{
+?S qb:component ?D.
+?D qb:componentProperty ?F.
+?F rdf:type qb:MeasureProperty.
+#OPTIONAL{?F rdfs:subPropertyOf ?subprop.}
+OPTIONAL{?D qb:componentRequired ?req.}
+OPTIONAL{?D qb:componentAttachment ?atch.
+?atch rdf:type ?type.}
+OPTIONAL{?D qb:order ?ord.}
+}
+}
+}
+#############################
+#Get the information of dimensions that are related to concepts
+CONSTRUCT {
+#?S qb:component ?D.
+#?D qb:dimension ?F. 
+?F rdf:type qb:DimensionProperty.
+?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+WHERE{
+#SELECT ?S ?D ?F ?conc
+SELECT ?F ?concept ?conc
+WHERE{
+{
+#?S qb:component ?D.
+#?D qb:dimension ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+UNION
+{
+#?S qb:component ?D.
+#?D qb:componentProperty ?F.
+?F rdf:type qb:DimensionProperty.
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+}
+}
+#############################
+#Get the information of attributes that are related to concepts
+CONSTRUCT {
+?F qb:concept ?concept.
+?concept rdf:type ?conc.
+?F rdf:type qb:AttributeProperty.}
+WHERE{
+SELECT ?F ?concept ?conc
+WHERE{
+{
+?F rdf:type qb:AttributeProperty.
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+UNION
+{
+?F rdf:type qb:AttributeProperty.
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+}
+}
+#############################
+#Get the information of measures that are related to concepts
+CONSTRUCT {
+?F qb:concept ?concept.
+?concept rdf:type ?conc.
+?F rdf:type qb:MeasureProperty.
+?F rdfs:subPropertyOf ?subprop.}
+WHERE{
+SELECT ?D ?F ?concept ?conc
+WHERE{
+{
+?F rdf:type qb:MeasureProperty.
+#OPTIONAL{?F rdfs:subPropertyOf ?subprop.}
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+UNION
+{
+?F rdf:type qb:MeasureProperty.
+OPTIONAL{?F qb:concept ?concept.
+?concept rdf:type ?conc.}
+}
+}
+}
+##################################
