@@ -1,0 +1,9 @@
+http://opendatacommunities.org/sparql
+construct{
+?s ?p ?o
+}where{
+SELECT DISTINCT *
+WHERE {
+  ?s ?p ?o
+}limit 10
+}
