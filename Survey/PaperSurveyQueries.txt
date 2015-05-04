@@ -1,0 +1,656 @@
+########################### 
+#Goal 1: Datasets and DSDs with respect to relevance and reuse 
+########################### 
+
+########################### 
+#Q1: Do all datasets have a corresponding DSD? 
+########################### 
+
+#M1: number of datasets
+select (count (distinct ?s) as ?nbDataSets)
+where{
+?s rdf:type qb:DataSet.
+}
+
+# M2: number of datasets that have dsd:
+select (count(distinct ?s) as ?nbDataSetsWithDSD)
+where{
+?s qb:structure ?dsd.
+}
+
+########################### 
+#Q2: Are DSDs, dimensions and measures reused?
+########################### 
+
+## Reuse of DSDs
+
+#M3: number of DSD:
+select (count(distinct ?s) as ?nbDSD)
+where{
+?s rdf:type qb:DataStructureDefinition.
+}
+
+#M4: number of reused DSD:
+select (count(distinct ?dsd) as ?NbReusedDSD)
+{select ?dsd 
+where{
+?ds qb:structure ?dsd.
+}
+GROUP BY (?dsd)
+HAVING (count(distinct ?ds) >1)}
+
+#M4 support query to see which DSDs are reused
+select ?dsd (count(distinct ?ds) as ?NbDataset)
+where{
+?ds qb:structure ?dsd.
+}
+GROUP BY (?dsd)
+HAVING (count(distinct ?ds) >1)
+
+## Reuse of Measure/Dimension properties in DSDs
+
+#M5: number of dimensionProperties:
+select (count (distinct ?p) as ?NbDimensionProp)
+where{
+?p rdf:type qb:DimensionProperty.
+}
+
+#M6: number of measureProperties:
+select (count (distinct ?m) as ?NbMeasureProp)
+where{
+?m rdf:type qb:MeasureProperty.
+}
+
+#M7: number of DimensionsProperties used in more than one DSD
+select (count (?x) as ?NbReusedDim)
+where{
+select  (count(distinct ?d) as ?x)
+where{
+?dsd qb:component ?c.
+?c qb:dimension ?d.
+}
+GROUP BY (?d)
+HAVING (count(distinct ?dsd) > 1)
+}
+
+## M7 support query
+select distinct ?d (count(distinct ?dsd) as ?NbDSD)
+where{
+?dsd qb:component ?c.
+?c qb:dimension ?d.
+}
+group by (?d)
+HAVING (count(distinct ?dsd) > 1)
+order by DESC (?NbDSD)
+
+#M8: number of measureProperties used in more than one DSD
+select (count (?x) as ?NbReusedMea)
+where{
+select  (count(distinct ?m) as ?x)
+where{
+?dsd qb:component ?c.
+?c qb:measure ?m.
+}
+GROUP BY (?m)
+HAVING (count(distinct ?dsd) > 1)
+}
+
+## M8 support query
+select distinct ?m (count(distinct ?dsd) as ?NbDSD)
+where{
+?dsd qb:component ?c.
+?c qb:measure ?m.
+}
+group by (?m)
+having (count(distinct ?dsd) > 1)
+order by DESC (?NbDSD)
+
+#Reused through subproperty
+
+#M9:number of dimensionProperties defined as subproperty of another DimensionProperty
+select (count(distinct ?subprop) as ?NbReusedDimensionSubproperty)
+where{
+?d a qb:DimensionProperty.
+?d rdfs:subPropertyOf ?subprop.
+}
+
+#M9 suporting query 
+select ?subprop (count(distinct ?d) as ?NbReusedDimensionSubproperty)
+where{
+?d a qb:DimensionProperty.
+?d rdfs:subPropertyOf ?subprop.
+}
+group by (?subprop)
+
+#M10:number of measureProperties defined as subproperty of another MeasureProperty
+
+select (count(distinct ?subprop) as ?NbReusedMeasureSubproperty)
+where{
+?m a qb:MeasureProperty.
+?m rdfs:subPropertyOf ?subprop.
+}
+
+#M10 suporting query 
+select ?subprop (count(distinct ?m) as ?NbReusedMeasureSubproperty)
+where{
+?m a qb:MeasureProperty.
+?m rdfs:subPropertyOf ?subprop.
+}
+group by (?subprop)
+
+
+## ATTRIBUTE REUSE WAS NOT INCLUDED IN THE PAPER
+select (count(distinct ?subprop) as ?NbReusedAttributeSubproperty)
+where{
+?a a qb:AttributeProperty.
+?a rdfs:subPropertyOf ?subprop.
+}
+
+#suporting query 
+select ?subprop (count(distinct ?a) as ?NbReusedAttributeSubproperty)
+where{
+?a a qb:AttributeProperty.
+?a rdfs:subPropertyOf ?subprop.
+}
+group by (?subprop)
+
+# TOP REUSED
+
+#M11: top 10 dimensions reused in DSDs
+select  ?d (count(distinct ?dsd) as ?NbDSD)
+where{
+?dsd qb:component ?c.
+?c qb:dimension ?d.
+}
+GROUP BY (?d)
+HAVING (count(distinct ?dsd) > 1)
+ORDER BY DESC(?NbDSD)
+LIMIT 10
+
+#M12: top 10 measures reused in DSDs
+select  ?m (count(distinct ?dsd) as ?NbDSD)
+where{
+?dsd qb:component ?c.
+?c qb:measure ?m.
+}
+GROUP BY (?m)
+HAVING (count(distinct ?dsd) > 1)
+ORDER BY DESC(?NbDSD)
+LIMIT 10
+
+########################### 
+#Goal 2 : DSD with respect to modeling strategy
+########################### 
+
+########################### 
+#Q3: How many DSDs apply the multi-measure strategy (ST2)? 
+########################### 
+
+#M13: How many DSDs define multiple measures?
+
+select (count(distinct ?dsd) as ?NbDSDMultipleMeasures)
+{select  ?dsd (count(*) as ?NbmeasuresPerDSD)
+where{
+?dsd qb:component/qb:measure ?m.
+}
+GROUP BY (?dsd)
+HAVING (count(*) > 1)}
+
+#M13 supporting query
+select  ?dsd (count(*) as ?NbmeasuresPerDSD)
+where{
+?dsd qb:component/qb:measure ?m.
+}
+GROUP BY (?dsd)
+HAVING (count(*) > 1)
+
+########################### 
+#Q4: How many DSDs adopt the measure dimension strategy (ST3)? 
+########################### 
+
+#M14: How many DSDs use the measure dimension approach (using Cube constructs)?
+select (count(distinct ?dsd) as ?NbDSDMeasureDimension)
+where
+{
+{?dsd qb:measureDimension ?md}
+UNION
+{?dsd ?md qb:measureType}
+}
+
+##########################
+Q5: How many DSDs define a single measure (ST1 and ST4/ST5)
+##########################
+
+#How many DSDs define a single measure?
+select (count(distinct ?dsd) as ?NbDSDSingleMeasures)
+{select  ?dsd (count(*) as ?NbmeasuresPerDSD)
+where{
+?dsd qb:component/qb:measure ?m.
+}
+GROUP BY (?dsd)
+HAVING (count(*) = 1)}
+
+#M16: How many DSDs define a single generic measure?
+select (count(distinct ?dsd) as ?NbDSDSingleGenericMeasures)
+{select  ?dsd (count(*) as ?NbmeasuresPerDSD)
+where{
+?dsd qb:component/qb:measure ?m.
+FILTER EXISTS {
+?dsd qb:component/qb:measure ?m1.
+FILTER regex(str(?m1),'obs', 'i').
+FILTER regex(str(?m1),'value', 'i').
+}
+}
+GROUP BY (?dsd)
+HAVING (count(*) = 1)}
+
+#M16 supporting query
+select  distinct ?dsd ?m1 ?m2
+where{
+?dsd qb:component/qb:measure ?m1.
+FILTER regex(str(?m1),'obs', 'i').
+FILTER regex(str(?m1),'value', 'i').
+optional {?m1 rdfs:subPropertyOf ?m2.}.
+}
+order by ?m2
+
+#M15: How many DSDs define a single domain measure?
+#This is going to be calculated using DSDs with a single measure - M16.
+
+#Sanity checking query: DSDs that do not have measures
+select distinct ?dsd
+WHERE
+{?dsd qb:component ?c.
+ FILTER NOT EXISTS {?dsd qb:component/qb:measure ?x}
+ }
+ 
+
+##########################
+#Q6: How many DSDs with a single measure contain dimension representing measures (ST5)
+##########################
+
+#M17: Are there single measure DSDs that implicitly represent the “measure dimension” approach using a regular indicator/measure dimension?
+
+#obs: the relationship with code list does not seem to make a difference
+#obs: could find URIs with key words measures and indicators
+select (count(distinct ?D) as ?NbDSDIndicatorDimensions)
+{select  (sample(?dsd) as ?D) (sample(?d) as ?dim)
+where{
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:codeList ?l.
+FILTER regex (str(?d),'indic', 'i').}
+UNION
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:codeList ?l.
+FILTER regex (str(?d),'measur', 'i').}
+UNION
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:concept ?l.
+FILTER regex (str(?d),'variab', 'i').
+}
+}
+GROUP BY ?dsd ?d
+HAVING (count(distinct ?m) = 1)
+}
+
+##M17 supporting query
+select  (sample(?dsd) as ?DSD) (sample(?d) as ?dim)
+where{
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:codeList ?l.
+FILTER regex (str(?d),'indic', 'i').}
+UNION
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:codeList ?l.
+FILTER regex (str(?d),'measur', 'i').}
+UNION
+{?dsd qb:component/qb:measure ?m.
+?dsd qb:component/qb:dimension ?d.
+?d qb:concept ?l.
+FILTER regex (str(?d),'variab', 'i').
+}
+}
+GROUP BY ?dsd ?d
+HAVING (count(distinct ?m) = 1)
+
+########################### 
+#Goal 3 : DSD with respect to conceptual enrichment
+########################### 
+
+########################### 
+Q7: Do publishers relate component properties to concepts for conceptual enrichment?
+########################### 
+
+#Measure/Dimensions related to Concepts in general
+
+#M19: #Nb of measures/dimensions (component properties)
+select distinct (count(distinct ?p) as ?NbComponentProp)
+where {
+{
+?p a qb:MeasureProperty.
+}
+UNION
+{?p a qb:DimensionProperty.
+}
+}
+
+#M20: Nb of Measure/Dimensions related to general Concepts
+select  (count(distinct ?p) as ?NbCompPropRelatedToConcept)
+where {
+{
+?p a qb:MeasureProperty.
+?p qb:concept ?c.
+}
+UNION
+{?p a qb:DimensionProperty.
+?p qb:concept ?c.
+}
+}
+
+#M21: Nb of Dimensions related to general Concepts
+
+#Nb of dimensions related to concepts
+select (count(distinct ?d) as ?NbDimPropRelatedToConcept)
+where {
+?d a qb:DimensionProperty.
+?d qb:concept ?c.
+}
+
+#M21: supporting query
+select distinct ?d ?c ?ct
+where {
+?d a qb:DimensionProperty.
+?d qb:concept ?c.
+?c a ?ct.
+}
+
+
+#M22: Nb of Measure related to general Concepts
+Nb of measures related to concepts
+select (count(distinct ?m) as ?NbMeasurePropRelatedToConcept)
+where {
+?m a qb:MeasureProperty.
+?m qb:concept ?c.
+}
+
+
+#M22: supporting query
+select ?m ?c ?ct
+where {
+?m a qb:MeasureProperty.
+?m qb:concept ?c.
+}
+
+#Measure/Dimensions related to SDMX concepts
+#obs: considered that the simple declaration of a (domain) concept as a SDMX concept was inconsistent, because it is not part of a standard. Used this definition in the survey: a sdmx concept defined in the standard; defined as subproperty of sdmx dimension/measure (which in turn are always connected to a concept); related to an sdmx dimension/property
+
+#M24: Nb of dimensions related to SDMX concepts (including through subproperties)
+select (count(distinct ?m) as ?NbDimPropRelatedToSDMXConcept)
+where 
+{{?comp qb:dimension ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?comp qb:dimension ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/dimension',  'i')}
+UNION
+{?comp qb:dimension ?m.
+FILTER regex (str(?m), 'purl.org/linked-data/sdmx/2009/dimension', 'i').
+}
+}
+
+#M25: Nb of measures related to SDMX concepts (including through subproperties)
+select (count(distinct ?m) as ?NbMeasurePropRelatedToSDMXConcept)
+where 
+{{?comp qb:measure ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?comp qb:measure ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'purl.org/linked-data/sdmx/2009/measure',  'i')}
+UNION
+{?comp qb:measure ?m.
+FILTER regex (str(?m), 'purl.org/linked-data/sdmx/2009/measure', 'i').
+}
+}
+
+
+#M25 supporting query
+#measures related to sdmx-concepts, or to sdmx-measures
+select distinct ?c ?m
+where 
+{{?comp qb:measure ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?comp qb:measure ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/measure',  'i')}
+}
+
+#M24 dimensions related to sdmx-concepts, or to sdmx-dimensions that are related to concepts
+select distinct ?c ?m
+where
+{{?comp qb:dimension ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?comp qb:dimension ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/dimension',  'i')}
+}
+
+#M24 and M25 supporting query: dimensions related to sdmx concepts, which are not sdmx concepts
+select distinct ?c ?m
+where 
+{{?comp qb:dimension ?m.
+?m qb:concept ?c.
+?c a sdmx:Concept.}
+MINUS
+{{?comp qb:dimension ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?comp qb:dimension ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/dimension',  'i')}
+}
+}
+
+#Nb of dimensions related to SDMX concepts
+# did not use this interpretation 
+select (count(distinct ?m) as ?NbDimPropRelatedToSDMXConcept)
+where {
+{?m a qb:DimensionProperty.
+?m qb:concept ?c.
+?c a sdmx:Concept.}
+UNION
+{?m a qb:DimensionProperty.
+?m qb:concept ?c.
+?c a sdmx:ConceptRole}.
+}
+
+#supporting query
+select distinct ?c ?d
+where {
+?d a qb:DimensionProperty.
+?d qb:concept ?c.
+}
+order by ?c
+
+#M26: NbDSDs in which at least one dimension/measure is associated to a concept
+select distinct (count(distinct ?dsd) as ?NbDSDsComPropRelatedToConcept)
+where {
+{
+?dsd qb:component ?comp.
+?comp qb:dimension ?p.
+?p qb:concept ?c.
+}
+UNION
+{
+?dsd qb:component ?comp.
+?comp qb:measure ?p.
+?p qb:concept ?c.
+}
+}
+
+#M26 support query
+select distinct (count(distinct ?dsd) as ?nbDSDsWithDimConcepts)
+where {
+?dsd qb:component ?comp.
+?comp qb:dimension ?d.
+?d qb:concept ?c.
+}
+
+#M26 support query
+select distinct ?d ?dsd
+where {
+?dsd qb:component ?comp.
+?comp qb:dimension ?d.
+?d qb:concept ?c.
+?c a ?ct.
+}
+
+#M26 support query
+#NbDSDs in which at least measure is associated to a concept
+select distinct (count(distinct ?dsd) as ?nbDSDsWithMeaConcepts)
+where {
+?dsd qb:component ?comp.
+?comp qb:measure ?m.
+?m qb:concept ?c.
+}
+
+#M26 support query
+select distinct ?m ?dsd
+where {
+?dsd qb:component ?comp.
+?comp qb:measure ?m.
+?m qb:concept ?c.
+}
+
+#M27: NbDSDs in which at least one measure/dimension is associated to a sdmx concept
+select (count(distinct ?dsd) as ?NbDSDsComPropRelatedToSDMXConcept)
+where {
+{
+{?dsd qb:component/qb:dimension ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?dsd qb:component/qb:dimension ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/dimension',  'i')}
+UNION
+{?dsd qb:component/qb:dimension ?m.
+FILTER regex (str(?m), 'purl.org/linked-data/sdmx/2009/dimension', 'i').
+}
+}
+UNION
+{
+{?dsd qb:component/qb:measure ?m.
+?m qb:concept ?c.
+FILTER regex(str(?c), 'http://purl.org/linked-data/sdmx/2009/concept',  'i')}
+UNION
+{?dsd qb:component/qb:measure ?m.
+?m qb:concept ?c.
+?m rdfs:subPropertyOf ?sub.
+FILTER regex(str(?sub), 'http://purl.org/linked-data/sdmx/2009/measure',  'i')}
+UNION
+{?dsd qb:component/qb:measure ?m.
+FILTER regex (str(?m), 'purl.org/linked-data/sdmx/2009/measure', 'i').
+}
+}
+}
+
+#M28: Top popular concepts
+select distinct ?c ?m
+where 
+{
+?dsd qb:component ?comp.
+?comp qb:measure ?m.
+?m qb:concept ?c.
+?c a sdmx:Concept.
+}
+UNION
+{
+?dsd qb:component ?comp.
+?comp qb:dimension ?d.
+?d qb:concept ?c.
+?c a sdmx:Concept.}
+}
+LIMIT 10
+
+##########################Question6
+#Q6.	Which are the top n vocabulary terms (i.e. class skos:Concept and its subclasses) used to relate ComponentProperties  to concepts?
+
+select ?conc (count(distinct ?dsd) as ?NbTimesUsed)
+where
+{
+{
+?dsd qb:component/qb:measure ?p.
+?p qb:concept ?conc.
+}
+UNION
+{
+?dsd qb:component/qb:dimension ?p.
+?p qb:concept ?conc.
+}
+}
+GROUP BY (?conc)
+ORDER BY DESC(?NbTimesUsed)
+LIMIT 10
+
+##########################Question7
+#Q7.	How significant is this usage
+
+select ?t (count(distinct ?dsd) as ?NbDSDsTypeUsed)
+where
+{
+{
+?dsd qb:component/qb:dimension ?p.
+?p qb:concept ?conc.
+?conc a ?t.
+}
+UNION
+{
+?dsd qb:component/qb:measure ?p.
+?p qb:concept ?conc.
+?conc a ?t.
+}
+}
+GROUP BY (?t)
+
+
+########################### 
+Goal 4: DSD with respect to normalization
+########################### 
+
+########################### 
+Q8: Which is the most common representation?
+########################### 
+
+#nbNonNormalizedDSD
+select  (count(distinct ?dsd) as ?nbNonNormalizedDSD)
+where{
+?dsd qb:component ?c.
+?c qb:componentAttachment ?a.
+}
+
+#nbNormalizedDSD
+select  (count(distinct ?dsd ) as ?nbNormalizedDSD)
+where{
+?dsd qb:component ?c.
+FILTER NOT EXISTS {?c qb:componentAttachment ?a.}
+}
